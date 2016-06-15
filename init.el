@@ -14,9 +14,10 @@
 ;;; ディレクトリをサブディレクトリごとload-pathに追加
 (add-to-load-path ".")
 
-(package-initialize)
+(require 'package)
 (add-to-list 'package-archives '("marmalade" . "http://marmalade-repo.org/packages/"))
-(add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/"))
+(add-to-list 'package-archives '("melpa" .  "http://stable.melpa.org/packages/") t)
+(package-initialize)
 
 
 ;;; 曖昧文字幅の対策
@@ -229,7 +230,7 @@
   (define-key global-map (kbd "C-x C-r") 'helm-recentf)
   (define-key global-map (kbd "M-y")     'helm-show-kill-ring)
   (define-key global-map (kbd "C-c i")   'helm-imenu)
-  (define-key global-map (kbd "C-x b")   'helm-buffers-list)
+  (define-key global-map (kbd "C-x C-b")   'helm-buffers-list)
   (define-key helm-map (kbd "C-h") 'delete-backward-char)
   (define-key helm-find-files-map (kbd "C-h") 'delete-backward-char)
 (define-key helm-read-file-map (kbd "C-h") 'delete-backward-char)
@@ -242,16 +243,6 @@
 (define-key helm-swoop-map (kbd "C-r") 'helm-previous-line)
 (define-key helm-swoop-map (kbd "C-s") 'helm-next-line)
 
-;;; 検索結果をcycleしない、お好みで
-(setq helm-swoop-move-to-line-cycle nil)
-
-(cl-defun helm-swoop-nomigemo (&key $query ($multiline current-prefix-arg))
-  "シンボル検索用Migemo無効版helm-swoop"
-  (interactive)
-  (let ((helm-swoop-pre-input-function
-         (lambda () (format "\\_<%s\\_> " (thing-at-point 'symbol)))))
-    (helm-swoop :$source (delete '(migemo) (copy-sequence (helm-c-source-swoop)))
-                :$query $query :$multiline $multiline)))
 ;;; C-M-:に割り当て
 (global-set-key (kbd "C-M-:") 'helm-swoop-nomigemo)
 
@@ -344,36 +335,6 @@
         (if (and (bolp) (eolp)) ;お気に入り
                   (my-delete-line)
               (my-kill-line)))
-;; kill-line から置換
-(defun my-delete-line (&optional arg)
-    (interactive "P")
-      (delete-region (point)
-                                      (progn
-                                                           (if arg
-                                                                                      (forward-visible-line (prefix-numeric-value arg))
-                                                                                  (if (eobp)
-                                                                                                               (signal 'end-of-buffer nil))
-                                                                                                       (let ((end
-                                                                                                                                          (save-excursion
-                                                                                                                                                                          (end-of-visible-line) (point))))
-                                                                                                                                (if (or (save-excursion
-                                                                                                                                                                           (unless show-trailing-whitespace
-                                                                                                                                                                                                                (skip-chars-forward " \t" end))
-                                                                                                                                                                                                            (= (point) end))
-                                                                                                                                                                       (and kill-whole-line (bolp)))
-                                                                                                                                                               (forward-visible-line 1)
-                                                                                                                                                           (goto-char end))))
-                                                                              (point))))
-(global-set-key (kbd "C-k") 'my-kill-or-delete-line)
-
-;;my-kill-line（C-u C-k）
-(defun my-kill-line ()
-    "C-u C-k でキルリングに入れない"
-      (interactive)
-        (if current-prefix-arg
-                  (delete-region (point)
-                                                      (save-excursion (end-of-line) (point)))
-              (kill-line)))
 
 ;;C-h（BackSpace）でリージョンを一括削除
 (delete-selection-mode 1)
@@ -423,19 +384,54 @@
 (key-combo-define-global (kbd "[]") "[]")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; color-theme
+;;; auto-complete
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; (setq custom-theme-directory (concat root-path "themes/"))
-;; (load-theme 'railscast t)
-
-;; 真っ黒テーマのujellyに乗り換えてみる
-;; http://rubikitch.com/2015/08/04/ujelly-theme/
-;; (load-theme 'ujelly t)
-
-;; mode-lineのテキストを黒に
-;; ;(set-face-foreground 'mode-line "black")
-
+(require 'auto-complete)
+(require 'auto-complete-config)    ;;  必須ではないですが一応
+(global-auto-complete-mode t)
+(ac-set-trigger-key "TAB")
+(setq ac-use-menu-map t)       ;; ; 補完メニュー表示時にC-n/C-pで補完候補選択
+(setq ac-use-fuzzy t)
+(setq ac-auto-start 2)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; magit
+;;; flycheck
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(package-install 'flycheck)
+(global-flycheck-mode)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; web-mode
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(require 'web-mode)
+(add-to-list 'auto-mode-alist '("\\.phtml\\'" .  web-mode))
+(add-to-list 'auto-mode-alist '("\\.tpl\\.php\\'" .  web-mode))
+(add-to-list 'auto-mode-alist '("\\.[agj]sp\\'" .  web-mode))
+(add-to-list 'auto-mode-alist '("\\.as[cp]x\\'" .  web-mode))
+(add-to-list 'auto-mode-alist '("\\.erb\\'" .  web-mode))
+(add-to-list 'auto-mode-alist '("\\.mustache\\'" .  web-mode))
+(add-to-list 'auto-mode-alist '("\\.djhtml\\'" .  web-mode))
+(add-to-list 'auto-mode-alist '("\\.html?\\'" .  web-mode))
+(setq web-mode-engines-alist
+      '(("php"   .  "\\.phtml\\'")
+        ("blade" .  "\\.blade\\.")))
+
+
+(setq web-mode-ac-sources-alist
+      '(("css" .  (ac-source-css-property))
+        ("html" .  (ac-source-words-in-buffer ac-source-abbrev))))
+(setq web-mode-ac-sources-alist
+      '(("php" .  (ac-source-yasnippet ac-source-php-auto-yasnippets))
+        ("html" .  (ac-source-emmet-html-aliases ac-source-emmet-html-snippets))
+        ("css" .  (ac-source-css-property ac-source-emmet-css-snippets))))
+
+(add-hook 'web-mode-before-auto-complete-hooks
+          '(lambda ()
+             (let ((web-mode-cur-language
+                    (web-mode-language-at-pos)))
+               (if (string=  web-mode-cur-language "php")
+                   (yas-activate-extra-mode 'php-mode)
+                 (yas-deactivate-extra-mode 'php-mode))
+               (if (string=  web-mode-cur-language "css")
+                   (setq emmet-use-css-transform t)
+                 (setq emmet-use-css-transform nil)))))
